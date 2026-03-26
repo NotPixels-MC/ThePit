@@ -1,0 +1,5 @@
+name: ThePit
+version: 1.0
+main: com.thepit.Main
+description: A Minecraft plugin for ThePit
+author: YourName

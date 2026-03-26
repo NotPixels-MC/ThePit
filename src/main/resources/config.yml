@@ -1,0 +1,5 @@
+# ThePit Plugin Configuration
+
+# Server IP to display on scoreboard
+server-ip: "play.example.com"
+
