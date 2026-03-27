@@ -5,27 +5,31 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>your.group.id</groupId>
-    <artifactId>YourPluginName</artifactId>
+    <groupId>com.thepit</groupId>
+    <artifactId>ThePit</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>YourPluginName</name>
-
-    <repositories>
-        <repository>
-            <id>spigot-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
+    <name>ThePit</name>
 
     <dependencies>
+
+        <!-- FULL SPIGOT SERVER (from BuildTools) -->
         <dependency>
             <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
+            <artifactId>spigot</artifactId>
             <version>1.8.8-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- CRAFTBUKKIT (from BuildTools) -->
+        <dependency>
+            <groupId>org.bukkit</groupId>
+            <artifactId>craftbukkit</artifactId>
+            <version>1.8.8-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

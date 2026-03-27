@@ -54,6 +54,47 @@ buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
 
 # Gradle
+.gradle/
+build/
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# VS Code
+.vscode/
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache/
+
+# OSX
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Bukkit/Spigot specific
+spigot-*.jar
+BuildTools.log
+work/
+run/
+
+# IDE
+*.swp
+*.swo
+*~
+.env
+.env.local
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
 .gradle
 gradle-app.setting
 !gradle-wrapper.jar

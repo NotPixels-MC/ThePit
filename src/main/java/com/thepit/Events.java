@@ -2,16 +2,19 @@ package com.thepit;
 
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.minecraft.server.v1_8_R3.IChatBaseComponent;
+import net.minecraft.server.v1_8_R3.PacketPlayOutChat;
 import org.bukkit.ChatColor;
-import org.bukkit.event.Listener;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.Material;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.Material;
 
 public class Events implements Listener {
 
@@ -24,53 +27,71 @@ public class Events implements Listener {
         Player victim = (Player) event.getEntity();
         Player attacker = (Player) event.getDamager();
 
-        // Keep vanilla knockback + red flash
+        // keep vanilla knockback
         event.setDamage(0);
 
-        // 1. Base weapon damage
         double baseDamage = getWeaponDamage(attacker.getItemInHand());
 
-        // 2. Critical hit check (1.8 logic)
-        boolean isCrit = isCriticalHit(attacker);
-
-        if (isCrit) {
-            baseDamage *= 1.5; // 50% more damage like vanilla crits
+        // crit
+        if (isCriticalHit(attacker)) {
+            baseDamage *= 1.5;
             attacker.sendMessage("§6CRIT! §e+" + (baseDamage * 0.5) + " dmg");
         }
 
-        // 3. Lore check (contains "test")
+        // lore bonus
         if (hasLoreContaining(attacker.getItemInHand(), "test")) {
-            baseDamage += 2; // example bonus
+            baseDamage += 2;
             attacker.sendMessage("§dLore bonus! §e+2 damage");
         }
 
-        // 4. Armor reduction
+        // armor reduction
         double armorPoints = getArmorPoints(victim);
         double reduction = armorPoints * 0.04;
         if (reduction > 0.80) reduction = 0.80;
 
-        // 5. Final damage
         double finalDamage = baseDamage * (1 - reduction);
 
-        // 6. Apply custom damage
-        double newHealth = victim.getHealth() - finalDamage;
+        // capture BEFORE damage
+        double maxHealth = victim.getMaxHealth();
+        double healthBefore = victim.getHealth();
+        double healthAfter = Math.max(0, healthBefore - finalDamage);
 
-        // 7. Fake death
-        if (newHealth <= 0) {
+        // death
+        if (healthAfter <= 0) {
             handleKill(attacker, victim);
             return;
         }
 
-        victim.setHealth(newHealth);
+        // apply damage
+        victim.setHealth(healthAfter);
 
-        // Debug
-        attacker.sendMessage("§aYou dealt §c" + finalDamage + " §ato " + victim.getName());
-        victim.sendMessage("§cYou took " + finalDamage + " damage");
+        // hearts
+        int maxHearts = (int) Math.ceil(maxHealth / 2.0);
+        int heartsBefore = (int) Math.ceil(healthBefore / 2.0);
+        int heartsAfter = (int) Math.ceil(healthAfter / 2.0);
+        int heartsLost = heartsBefore - heartsAfter;
+
+        StringBuilder bar = new StringBuilder();
+
+        // dark red = hearts left
+        for (int i = 0; i < heartsAfter; i++) {
+            bar.append("§4❤");
+        }
+
+        // bright red = hearts lost from this hit
+        for (int i = 0; i < heartsLost; i++) {
+            bar.append("§c❤");
+        }
+
+        // black = missing hearts
+        for (int i = 0; i < (maxHearts - heartsAfter - heartsLost); i++) {
+            bar.append("§0❤");
+        }
+
+        String actionBar = "§eDMG: §c" + finalDamage + "   §eHP: " + bar.toString();
+        sendActionBar(attacker, actionBar);
     }
 
-    // -------------------------
-    // CRITICAL HIT CHECK
-    // -------------------------
     private boolean isCriticalHit(Player p) {
         return p.getFallDistance() > 0 &&
                 !p.isOnGround() &&
@@ -79,12 +100,8 @@ public class Events implements Listener {
                 !p.isBlocking();
     }
 
-    // -------------------------
-    // LORE CHECK
-    // -------------------------
     private boolean hasLoreContaining(ItemStack item, String text) {
-        if (item == null) return false;
-        if (!item.hasItemMeta()) return false;
+        if (item == null || !item.hasItemMeta()) return false;
 
         ItemMeta meta = item.getItemMeta();
         if (!meta.hasLore()) return false;
@@ -97,19 +114,6 @@ public class Events implements Listener {
         return false;
     }
 
-    // -------------------------
-    // FAKE KILL
-    // -------------------------
-    private void fakeKill(Player killer, Player victim) {
-        victim.setHealth(victim.getMaxHealth());
-
-        killer.sendMessage("§eYou killed §c" + victim.getName());
-        victim.sendMessage("§cYou were killed by §e" + killer.getName());
-    }
-
-    // -------------------------
-    // WEAPON DAMAGE
-    // -------------------------
     private double getWeaponDamage(ItemStack item) {
         if (item == null) return 1;
 
@@ -128,9 +132,6 @@ public class Events implements Listener {
         }
     }
 
-    // -------------------------
-    // ARMOR POINTS
-    // -------------------------
     private double getArmorPoints(Player p) {
         PlayerInventory inv = p.getInventory();
         double points = 0;
@@ -210,10 +211,8 @@ public class Events implements Listener {
 
     private void handleKill(Player killer, Player victim) {
 
-        // Reset victim health
         victim.setHealth(victim.getMaxHealth());
 
-        // Stats
         Stats killerStats = StatsManager.getStats(killer.getUniqueId());
         Stats victimStats = StatsManager.getStats(victim.getUniqueId());
 
@@ -222,48 +221,31 @@ public class Events implements Listener {
 
         int streak = killerStats.getKillstreak();
 
-        // XP
         int baseXP = 5;
         int bonusXP = streak;
         int totalXP = baseXP + bonusXP;
-        // GOLD SYSTEM
+
         int baseGold = 10;
-
-// First 3 kills of streak give +4 each
         int streakBonus = Math.min(streak, 3) * 4;
-
-// Armor bonus
         int armorBonus = getArmorGoldValue(victim);
-
-// Final gold
         int totalGold = baseGold + streakBonus + armorBonus;
 
-// Add gold to stats
         killerStats.addGold(totalGold);
-
         killerStats.addXP(totalXP);
 
         killer.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "KILL! " +
                 ChatColor.RESET + ChatColor.GRAY + "on " + victim.getDisplayName() +
                 ChatColor.AQUA + " +" + totalXP + " XP " + ChatColor.GOLD + "+" + totalGold + "g ");
 
-        // Gold placeholder
-        int gold = 0;
+        KillRecapManager.createRecap(victim, killer, totalXP, totalGold, streak);
 
-        // Create recap
-        KillRecapManager.createRecap(victim, killer, totalXP, gold, streak);
-
-        // Clickable message
         TextComponent msg = new TextComponent(
                 ChatColor.RED + "" + ChatColor.BOLD + "YOU DIED! " +
                         ChatColor.GRAY + "(Click for Kill Recap)"
         );
 
         msg.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/killrecap"));
-
         victim.spigot().sendMessage(msg);
-
-
     }
 
     @EventHandler
@@ -271,7 +253,9 @@ public class Events implements Listener {
         ScoreboardTask.removePlayer(event.getPlayer().getUniqueId());
     }
 
-
-
-
+    public void sendActionBar(Player p, String message) {
+        IChatBaseComponent cbc = IChatBaseComponent.ChatSerializer.a("{\"text\":\"" + message + "\"}");
+        PacketPlayOutChat packet = new PacketPlayOutChat(cbc, (byte) 2);
+        ((CraftPlayer) p).getHandle().playerConnection.sendPacket(packet);
+    }
 }

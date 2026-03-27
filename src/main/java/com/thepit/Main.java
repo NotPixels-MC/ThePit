@@ -1,5 +1,7 @@
 package com.thepit;
 
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Main extends JavaPlugin {
@@ -7,7 +9,7 @@ public class Main extends JavaPlugin {
     private static Main instance;
 
     @Override
-    public void onEnable(){
+    public void onEnable() {
         try {
             // Set instance FIRST
             instance = this;
@@ -27,6 +29,7 @@ public class Main extends JavaPlugin {
             e.printStackTrace();
             getServer().getPluginManager().disablePlugin(this);
         }
+
     }
 
     public static Main getInstance() {
