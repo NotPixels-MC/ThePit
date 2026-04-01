@@ -21,15 +21,18 @@ public class PitEnchant {
         this.maxLevel = maxLevel;
     }
 
-    public void applyEnchant(ItemStack item, PitEnchant enchant, int level) {
+    public void applyEnchant(ItemStack item, int level) {
+
+        if (item == null || !item.hasItemMeta()) return;
+
         ItemMeta meta = item.getItemMeta();
         List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>();
 
         // Remove old version of this enchant
-        lore.removeIf(line -> ChatColor.stripColor(line).startsWith(enchant.displayName));
+        lore.removeIf(line -> ChatColor.stripColor(line).startsWith(displayName));
 
         // Add new enchant line
-        lore.add("§9" + enchant.displayName + " " + toRoman(level));
+        lore.add("§9" + displayName + " " + toRoman(level));
 
         meta.setLore(lore);
         item.setItemMeta(meta);

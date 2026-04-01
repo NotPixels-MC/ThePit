@@ -2,19 +2,13 @@ package com.thepit.Commands;
 
 import com.thepit.Enchants.EnchantRegistry;
 import com.thepit.Enchants.PitEnchant;
-import com.thepit.Utils.TextUtils;
-import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.thepit.Utils.EnchantUtils.applyEnchant;
 import static com.thepit.Utils.TextUtils.toRoman;
 
 public class PitEnchantCommand implements CommandExecutor {
@@ -58,15 +52,15 @@ public class PitEnchantCommand implements CommandExecutor {
 
         ItemStack item = p.getItemInHand();
 
-        if (item == null || item.getType().toString().equals("AIR")) {
+        if (item == null || item.getType() == Material.AIR) {
             p.sendMessage("§cHold an item first.");
             return true;
         }
 
-        applyEnchant(item, enchant, level);
+        // Apply enchant using the PitEnchant method
+        enchant.applyEnchant(item, level);
 
         p.sendMessage("§aApplied §e" + enchant.displayName + " " + toRoman(level) + " §ato your item.");
         return true;
     }
-
 }

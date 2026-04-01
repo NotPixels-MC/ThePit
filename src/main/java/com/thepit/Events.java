@@ -21,6 +21,8 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import static org.spigotmc.SpigotConfig.maxHealth;
+
 public class Events implements Listener {
 
     @EventHandler
@@ -32,11 +34,8 @@ public class Events implements Listener {
         Player victim = (Player) event.getEntity();
         Player attacker = (Player) event.getDamager();
 
-        // Cancel vanilla damage COMPLETELY
-        event.setCancelled(true);
-
-        // Keep knockback
-        victim.setVelocity(event.getDamager().getLocation().getDirection().multiply(0.4));
+        // Keep vanilla knockback + animation
+        event.setDamage(0); // prevents vanilla damage but keeps KB
 
         double baseDamage = getWeaponDamage(attacker.getItemInHand());
 
@@ -60,11 +59,9 @@ public class Events implements Listener {
         double finalDamage = baseDamage * (1 - reduction);
 
         // capture BEFORE damage
-        double maxHealth = victim.getMaxHealth();
         double healthBefore = victim.getHealth();
         double healthAfter = Math.max(0, healthBefore - finalDamage);
 
-        // EXECUTIONER
         // EXECUTIONER
         int execLevel = getExecutionerLevel(attacker.getItemInHand());
 
@@ -74,23 +71,19 @@ public class Events implements Listener {
             if (healthAfter <= threshold) {
 
                 double trueDamage = getExecutionerDamage(execLevel);
-
                 double newHealth = victim.getHealth() - trueDamage;
 
+                // lethal execution
                 if (newHealth <= 0) {
 
-                    // lethal execution
-                    event.setCancelled(true);
-                    victim.setHealth(0.0);
-
-// particles (killer only)
+                    // particles (killer only)
                     attacker.playEffect(
                             victim.getLocation().add(0, 1, 0),
                             Effect.ITEM_BREAK,
-                            Material.NETHER_BRICK.getId()
+                            Material.NETHER_WARTS.getId()
                     );
 
-// sound (killer only)
+                    // sound (killer only)
                     float pitch = 0.5f + (float) (Math.random() * 0.4);
                     attacker.playSound(
                             victim.getLocation(),
@@ -99,17 +92,25 @@ public class Events implements Listener {
                             pitch
                     );
 
-// kill handler
+                    // force death
+
+                    // run your kill handler
                     handleKill(attacker, victim);
-                    victim.sendMessage("§c&lEXECUTED!");
+
+                    attacker.sendMessage("§cExecutioner! §7(Executed)");
                     return;
                 }
 
-                // Not lethal, apply true damage
+                // non-lethal executioner true damage
                 victim.setHealth(newHealth);
                 attacker.sendMessage("§cExecutioner! §7(" + trueDamage + " true dmg)");
+                return;
             }
         }
+
+        // Apply normal custom damage
+        victim.setHealth(healthAfter);
+
 
         // death
         if (healthAfter <= 0) {
@@ -121,7 +122,7 @@ public class Events implements Listener {
         victim.setHealth(healthAfter);
 
         // hearts
-        int maxHearts = (int) Math.ceil(maxHealth / 2.0);
+        int maxHearts = (int) Math.ceil(victim.getMaxHealth() / 2.0);
         int heartsBefore = (int) Math.ceil(healthBefore / 2.0);
         int heartsAfter = (int) Math.ceil(healthAfter / 2.0);
         int heartsLost = heartsBefore - heartsAfter;
