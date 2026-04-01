@@ -150,7 +150,8 @@ public class Stats {
         }
 
         if (level > oldLevel) {
-            sendTitle(player, "§a§lLEVEL UP!", "§e" + oldLevel + " §7→ §a" + level, 10, 40, 10);
+            // sendTitle(player, "§a§lLEVEL UP!", "§e" + oldLevel + " §7→ §a" + level, 10, 40, 10);
+            player.sendMessage("§a§lLEVEL UP! §e" + oldLevel + " §7→ §a" + level);
         }
 
     }
@@ -175,7 +176,8 @@ public class Stats {
         }
 
         if (level > oldLevel) {
-            sendTitle(player, "§a§lLEVEL UP!", "§e" + oldLevel + " §7→ §a" + level, 10, 40, 10);
+            // sendTitle(player, "§a§lLEVEL UP!", "§e" + oldLevel + " §7→ §a" + level, 10, 40, 10);
+            player.sendMessage("§a§lLEVEL UP! §e" + oldLevel + " §7→ §a" + level);
         }
     }
 

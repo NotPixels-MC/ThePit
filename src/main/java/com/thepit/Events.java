@@ -62,64 +62,16 @@ public class Events implements Listener {
         double healthBefore = victim.getHealth();
         double healthAfter = Math.max(0, healthBefore - finalDamage);
 
-        // EXECUTIONER
-        int execLevel = getExecutionerLevel(attacker.getItemInHand());
-
-        if (execLevel > 0) {
-            double threshold = getExecutionerThreshold(execLevel);
-
-            if (healthAfter <= threshold) {
-
-                double trueDamage = getExecutionerDamage(execLevel);
-                double newHealth = victim.getHealth() - trueDamage;
-
-                // lethal execution
-                if (newHealth <= 0) {
-
-                    // particles (killer only)
-                    attacker.playEffect(
-                            victim.getLocation().add(0, 1, 0),
-                            Effect.ITEM_BREAK,
-                            Material.NETHER_WARTS.getId()
-                    );
-
-                    // sound (killer only)
-                    float pitch = 0.5f + (float) (Math.random() * 0.4);
-                    attacker.playSound(
-                            victim.getLocation(),
-                            Sound.VILLAGER_DEATH,
-                            1.0f,
-                            pitch
-                    );
-
-                    // force death
-
-                    // run your kill handler
-                    handleKill(attacker, victim);
-
-                    attacker.sendMessage("§cExecutioner! §7(Executed)");
-                    return;
-                }
-
-                // non-lethal executioner true damage
-                victim.setHealth(newHealth);
-                attacker.sendMessage("§cExecutioner! §7(" + trueDamage + " true dmg)");
-                return;
-            }
-        }
-
-        // Apply normal custom damage
-        victim.setHealth(healthAfter);
-
-
         // death
-        if (healthAfter <= 0) {
-            handleKill(attacker, victim);
-            return;
-        }
 
         // apply damage
-        victim.setHealth(healthAfter);
+        if (healthAfter <= 0) {
+            event.setCancelled(true);
+            healthAfter = victim.getMaxHealth();
+            handleKill(attacker, victim);
+            return;
+        } else {
+        victim.setHealth(healthAfter); }
 
         // hearts
         int maxHearts = (int) Math.ceil(victim.getMaxHealth() / 2.0);
@@ -267,8 +219,6 @@ public class Events implements Listener {
 
     private void handleKill(Player killer, Player victim) {
 
-        victim.setHealth(victim.getMaxHealth());
-
         Stats killerStats = StatsManager.getStats(killer.getUniqueId());
         Stats victimStats = StatsManager.getStats(victim.getUniqueId());
 
@@ -313,6 +263,10 @@ public class Events implements Listener {
         FileConfiguration config = Main.getInstance().getConfig();
 
         World world = Bukkit.getWorld(config.getString("player-spawn.world"));
+        if (world == null) {
+            victim.sendMessage("§cSpawn world not found! Teleporting to default world.");
+            world = Bukkit.getWorlds().get(0); // default world
+        }
         double x = config.getDouble("player-spawn.x");
         double y = config.getDouble("player-spawn.y");
         double z = config.getDouble("player-spawn.z");
@@ -321,7 +275,12 @@ public class Events implements Listener {
 
         Location spawn = new Location(world, x, y, z, yaw, pitch);
 
-        victim.teleport(spawn);
+        Bukkit.getScheduler().runTask(Main.getInstance(), () -> {
+            victim.spigot().respawn();
+            victim.teleport(spawn);
+            victim.setHealth(victim.getMaxHealth());
+        });
+
     }
 
     @EventHandler
@@ -457,49 +416,6 @@ public class Events implements Listener {
         PerkMenu.editingSlot.remove(player.getUniqueId());
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    public int getExecutionerLevel(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return 0;
-        ItemMeta meta = item.getItemMeta();
-        if (!meta.hasLore()) return 0;
-
-        for (String line : meta.getLore()) {
-            line = ChatColor.stripColor(line);
-
-            if (line.startsWith("Executioner ")) {
-                String roman = line.replace("Executioner ", "").trim();
-                return romanToInt(roman);
-            }
-        }
-        return 0;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
     public int romanToInt(String roman) {
         roman = roman.toUpperCase();
         int sum = 0;
@@ -523,27 +439,6 @@ public class Events implements Listener {
             prev = value;
         }
         return sum;
-    }
-
-
-    public double getExecutionerThreshold(int level) {
-        switch (level) {
-            case 1: return 2.0; // 1 heart
-            case 2: return 3.0; // 1.5 hearts
-            case 3: return 4.0; // 2 hearts
-            default:
-                return level * 1.5; // scaling for levels 4+
-        }
-    }
-
-    public double getExecutionerDamage(int level) {
-        switch (level) {
-            case 1: return 2.0;
-            case 2: return 3.0;
-            case 3: return 4.0;
-            default:
-                return level * 2.0; // scaling for levels 4+
-        }
     }
 
 

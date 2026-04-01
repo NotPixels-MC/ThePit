@@ -1,10 +1,8 @@
 package com.thepit;
 
 import com.thepit.Commands.PerksCommand;
-import com.thepit.Commands.PitEnchantCommand;
 import com.thepit.Commands.SetGoldCommand;
 import com.thepit.Commands.SetXPCommand;
-import com.thepit.Enchants.EnchantRegistry;
 import com.thepit.Perks.PerkEffects;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -25,7 +23,7 @@ public class Main extends JavaPlugin {
             // Load config
             Config.load();
 
-            EnchantRegistry.registerDefaults(); // <-- REQUIRED
+
 
 
             // Register events
@@ -47,7 +45,6 @@ public class Main extends JavaPlugin {
         getCommand("perks").setExecutor(new PerksCommand(upgradesMenu));
         getCommand("setxp").setExecutor(new SetXPCommand());
         getCommand("setgold").setExecutor(new SetGoldCommand());
-        getCommand("pitench").setExecutor(new PitEnchantCommand());
 
 
     }
