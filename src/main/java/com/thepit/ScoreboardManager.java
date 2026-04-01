@@ -54,7 +54,7 @@ public class ScoreboardManager {
         }
 
         // Line 6: Level
-        setScore(ChatColor.WHITE + "Level: " + ChatColor.YELLOW + stats.getLevel(), line--);
+        setScore(ChatColor.WHITE + "Level: " + ChatColor.RESET + stats.getDisplayLevel(stats.getLevel(), stats.getPrestige()), line--);
 
         // Line 5: XP Left
         int xpLeft = stats.getXPLeft();
@@ -62,6 +62,10 @@ public class ScoreboardManager {
 
         // Line 4: BLANK LINE
         setScore(" ", line--);
+
+        setScore(ChatColor.WHITE + "Gold: " + ChatColor.GOLD + stats.getGold() + "g ", line--);
+
+        setScore("   ", line--);
 
         // Line 3: Status
         setScore(ChatColor.WHITE + "Status: " + ChatColor.GREEN + "Idle", line--);

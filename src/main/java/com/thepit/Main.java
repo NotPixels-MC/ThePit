@@ -1,13 +1,16 @@
 package com.thepit;
 
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
+import com.thepit.Commands.PerksCommand;
+import com.thepit.Commands.PitEnchantCommand;
+import com.thepit.Commands.SetGoldCommand;
+import com.thepit.Commands.SetXPCommand;
+import com.thepit.Enchants.EnchantRegistry;
+import com.thepit.Perks.PerkEffects;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Main extends JavaPlugin {
 
     private static Main instance;
-    private static PerkSlotsGUI perkSlotsGUI;
 
     @Override
     public void onEnable() {
@@ -15,19 +18,19 @@ public class Main extends JavaPlugin {
             // Set instance FIRST
             instance = this;
 
+            saveDefaultConfig();
+
             // Initialize GUIs
-            perkSlotsGUI = new PerkSlotsGUI();
 
             // Load config
             Config.load();
 
+            EnchantRegistry.registerDefaults(); // <-- REQUIRED
+
+
             // Register events
             getServer().getPluginManager().registerEvents(new Events(), this);
-            getServer().getPluginManager().registerEvents(new PerkSlotsClickListener(perkSlotsGUI), this);
-            getServer().getPluginManager().registerEvents(new PerkSelectionClickListener(perkSlotsGUI), this);
-
-            // Register commands
-            getCommand("perkslots").setExecutor(new PerkSlotsCommand(perkSlotsGUI));
+            getServer().getPluginManager().registerEvents(new PerkEffects(this), this);
 
             // Start scoreboard task (updates every 20 ticks)
             ScoreboardTask.start();
@@ -39,10 +42,20 @@ public class Main extends JavaPlugin {
             getServer().getPluginManager().disablePlugin(this);
         }
 
+        UpgradesMenu upgradesMenu = new UpgradesMenu();
+
+        getCommand("perks").setExecutor(new PerksCommand(upgradesMenu));
+        getCommand("setxp").setExecutor(new SetXPCommand());
+        getCommand("setgold").setExecutor(new SetGoldCommand());
+        getCommand("pitench").setExecutor(new PitEnchantCommand());
+
+
     }
 
     public static Main getInstance() {
         return instance;
     }
+
+
 
 }

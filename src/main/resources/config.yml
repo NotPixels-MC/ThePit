@@ -1,5 +1,11 @@
 # ThePit Plugin Configuration
 
-# Server IP to display on scoreboard
 server-ip: "play.example.com"
 
+player-spawn:
+  x: 0.5
+  y: 100
+  z: 0.5
+  yaw: 90
+  pitch: 0
+  world: "world_elements"

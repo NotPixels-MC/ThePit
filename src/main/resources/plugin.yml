@@ -5,8 +5,32 @@ description: A Minecraft plugin for ThePit
 author: YourName
 
 commands:
-  perkslots:
-    description: Open perk slots to manage slot unlocking and perk equipping
-    usage: /perkslots
+  perks:
+    description: Opens the perks menu
+  setgold:
+    description: Set a player's gold amount
+    usage: /setgold <player> <amount>
+    permission: thepit.setgold
+  setxp:
+    description: Set a player's XP
+    usage: /setxp <player> <amount>
+    permission: thepit.setxp
+  pitench:
+    description: Add an enchantment
+    usage: /pitench <enchantment> <level>
+    permission: thepit.pitench
 
+
+permissions:
+  thepit.setgold:
+    description: Allows setting gold
+    default: op
+
+  thepit.setxp:
+    description: Allows setting XP
+    default: op
+
+  thepit.pitench:
+    description: Allows adding enchantments
+    default: op
 
