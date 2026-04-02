@@ -245,60 +245,16 @@ public class Events implements Listener {
 
         killerStats.addKill();
         victimStats.addDeath();
-        MegastreakTypes ms = killerStats.getMegastreak();
-
 
         int streak = killerStats.getKillstreak();
 
-        int baseXP = 5;
-        int streakXPBonus = 0;
+        // Calculate rewards
+        RewardResult rewards = calculateRewards(killer, victim);
 
-        if (streak <=3) baseXP += 4;
+        killerStats.addGold(rewards.gold);
+        killerStats.addXP(rewards.xp, killer);
 
-        if (streak == 3 || streak == 4) {
-            streakXPBonus = 3;
-        }
-
-        if (streak >= 5 && streak <= 19) {
-            streakXPBonus = 5;
-        }
-
-        if (streak >= 20) {
-           streakXPBonus = streak/10*3;
-
-           if (streakXPBonus >= 30) streakXPBonus = 30;
-
-        }
-
-        int streakerbonus = streakXPBonus*3;
-
-        if (killerStats.hasEquipped("streaker")) streakXPBonus = streakerbonus;
-
-        int totalXP = baseXP + streakXPBonus;
-
-
-        int baseGold = 10;
-        int armorBonus = getArmorGoldValue(victim);
-
-
-        int totalGold = baseGold + armorBonus;
-        if (victimStats.getLevel() <= 20) {
-            totalGold = (int)(totalGold * 0.9);
-            totalXP = (int)(totalXP * 0.9);
-        }
-
-        if (ms != null) {
-            totalXP = (int)(totalXP * (1 + ms.getExtraXP() / 100.0));
-            totalGold = (int)(totalGold * (1 + ms.getExtraGOLD() / 100.0));
-        }
-
-
-
-        killerStats.addGold(totalGold);
-        killerStats.addXP(totalXP, killer);
-
-        //MegaStreak
-
+        // Megastreak activation
         for (MegastreakTypes type : MegastreakTypes.values()) {
             if (streak == type.getRequiredKills()) {
                 killerStats.setMegastreak(type);
@@ -307,7 +263,7 @@ public class Events implements Listener {
             }
         }
 
-
+        // Assist rewards
         Map<UUID, Double> attackers = damageMap.get(victim.getUniqueId());
         if (attackers != null) {
 
@@ -317,7 +273,6 @@ public class Events implements Listener {
                 UUID assisterId = entry.getKey();
                 double damageDone = entry.getValue();
 
-                // Skip killer
                 if (assisterId.equals(killer.getUniqueId())) continue;
 
                 Player assister = Bukkit.getPlayer(assisterId);
@@ -325,65 +280,34 @@ public class Events implements Listener {
 
                 double assistPercent = damageDone / maxHealth;
 
-                // Ignore tiny assists (< 5%)
-                if (assistPercent < 0.01) continue;
-
-                handleAssistKill(assister, victim, assistPercent);
+                if (assistPercent >= 0.01) {
+                    handleAssistKill(assister, victim, assistPercent);
+                }
             }
 
             damageMap.remove(victim.getUniqueId());
         }
 
+        // Ghead perk
         if (killerStats.hasEquipped("ghead")) {
             ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
             SkullMeta meta = (SkullMeta) head.getItemMeta();
             meta.setOwner("kenyon03");
             meta.setDisplayName(ChatColor.GOLD + "Golden Head");
             head.setItemMeta(meta);
-
             killer.getInventory().addItem(head);
         }
 
-        killer.playSound(
-                killer.getLocation(),
-                Sound.ORB_PICKUP,
-                2.0f,
-                1.8f
-        );
-
+        // Sound + message
+        killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 2.0f, 1.8f);
 
         killer.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "KILL! " +
                 ChatColor.RESET + ChatColor.GRAY + "on " + victim.getDisplayName() +
-                ChatColor.AQUA + " +" + totalXP + " XP " + ChatColor.GOLD + "+" + totalGold + "g ");
+                ChatColor.AQUA + " +" + rewards.xp + " XP " +
+                ChatColor.GOLD + "+" + rewards.gold + "g ");
 
-        TextComponent msg = new TextComponent(
-                ChatColor.RED + "" + ChatColor.BOLD + "YOU DIED! " +
-                        ChatColor.GRAY + "(Click for Kill Recap)"
-        );
-
-        msg.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/killrecap"));
-        victim.spigot().sendMessage(msg);
-        FileConfiguration config = Main.getInstance().getConfig();
-
-        World world = Bukkit.getWorld(config.getString("player-spawn.world"));
-        if (world == null) {
-            victim.sendMessage("§cSpawn world not found! Teleporting to default world.");
-            world = Bukkit.getWorlds().get(0); // default world
-        }
-        double x = config.getDouble("player-spawn.x");
-        double y = config.getDouble("player-spawn.y");
-        double z = config.getDouble("player-spawn.z");
-        float yaw = (float) config.getDouble("player-spawn.yaw");
-        float pitch = (float) config.getDouble("player-spawn.pitch");
-
-        Location spawn = new Location(world, x, y, z, yaw, pitch);
-
-        Bukkit.getScheduler().runTask(Main.getInstance(), () -> {
-            victim.spigot().respawn();
-            victim.teleport(spawn);
-            victim.setHealth(victim.getMaxHealth());
-        });
-
+        // Respawn victim
+        respawnPlayer(victim);
     }
 
     private void handleAssistKill(Player assister, Player victim, double assistPercent) {
@@ -581,6 +505,90 @@ public class Events implements Listener {
             prev = value;
         }
         return sum;
+    }
+
+    //REWARDS
+    private RewardResult calculateRewards(Player killer, Player victim) {
+
+        Stats killerStats = StatsManager.getStats(killer.getUniqueId());
+        Stats victimStats = StatsManager.getStats(victim.getUniqueId());
+        MegastreakTypes ms = killerStats.getMegastreak();
+
+        int streak = killerStats.getKillstreak();
+
+        // XP calculation
+        int baseXP = 5;
+        int streakXPBonus = 0;
+
+        if (streak <= 3) baseXP += 4;
+        if (streak == 3 || streak == 4) streakXPBonus = 3;
+        if (streak >= 5 && streak <= 19) streakXPBonus = 5;
+
+        if (streak >= 20) {
+            streakXPBonus = streak / 10 * 3;
+            if (streakXPBonus >= 30) streakXPBonus = 30;
+        }
+
+        // Streaker perk
+        if (killerStats.hasEquipped("streaker")) {
+            streakXPBonus *= 3;
+        }
+
+        int totalXP = baseXP + streakXPBonus;
+
+        // Gold calculation
+        int baseGold = 10;
+        int armorBonus = getArmorGoldValue(victim);
+        int totalGold = baseGold + armorBonus;
+
+        // Low-level penalty
+        if (victimStats.getLevel() <= 20) {
+            totalXP = (int)(totalXP * 0.9);
+            totalGold = (int)(totalGold * 0.9);
+        }
+
+        // Megastreak bonus
+        if (ms != null) {
+            totalXP = (int)(totalXP * (1 + ms.getExtraXP() / 100.0));
+            totalGold = (int)(totalGold * (1 + ms.getExtraGOLD() / 100.0));
+        }
+
+        return new RewardResult(totalXP, totalGold);
+    }
+
+    private static class RewardResult {
+        public final int xp;
+        public final int gold;
+
+        public RewardResult(int xp, int gold) {
+            this.xp = xp;
+            this.gold = gold;
+        }
+    }
+
+    private void respawnPlayer(Player victim) {
+        FileConfiguration config = Main.getInstance().getConfig();
+
+        World world = Bukkit.getWorld(config.getString("player-spawn.world"));
+        if (world == null) {
+            victim.sendMessage("§cSpawn world not found! Teleporting to default world.");
+            world = Bukkit.getWorlds().get(0);
+        }
+
+        Location spawn = new Location(
+                world,
+                config.getDouble("player-spawn.x"),
+                config.getDouble("player-spawn.y"),
+                config.getDouble("player-spawn.z"),
+                (float) config.getDouble("player-spawn.yaw"),
+                (float) config.getDouble("player-spawn.pitch")
+        );
+
+        Bukkit.getScheduler().runTask(Main.getInstance(), () -> {
+            victim.spigot().respawn();
+            victim.teleport(spawn);
+            victim.setHealth(victim.getMaxHealth());
+        });
     }
 
 }
