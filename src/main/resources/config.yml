@@ -9,3 +9,18 @@ player-spawn:
   yaw: 90
   pitch: 0
   world: "world_elements"
+
+#Bot Data
+bot-skins:
+  - "Notch"
+  - "Steve"
+  - "Alex"
+  - "NotPixels"
+
+bot-spawn:
+  x: 0.5
+  y: 85
+  z: 0.5
+  yaw: 180
+  pitch: 0
+  world: "world_elements"

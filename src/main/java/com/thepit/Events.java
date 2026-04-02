@@ -4,8 +4,6 @@ import com.thepit.Megastreaks.MegastreakTypes;
 import com.thepit.Perks.PerkInfo;
 import com.thepit.Perks.PerkMenu;
 import com.thepit.Perks.PerkRegistry;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 import net.minecraft.server.v1_8_R3.IChatBaseComponent;
 import net.minecraft.server.v1_8_R3.PacketPlayOutChat;
 import org.bukkit.*;
@@ -16,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -26,17 +25,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.spigotmc.SpigotConfig.maxHealth;
-
 public class Events implements Listener {
 
     private final Map<UUID, Map<UUID, Double>> damageMap = new HashMap<>();
+    private final NPCManager npcManager = Main.getInstance().getNPCManager();
 
     @EventHandler
     public void onDamage(EntityDamageByEntityEvent event) {
 
         if (!(event.getEntity() instanceof Player)) return;
         if (!(event.getDamager() instanceof Player)) return;
+        // Check if victim is a bot
 
         Player victim = (Player) event.getEntity();
         Player attacker = (Player) event.getDamager();
@@ -64,6 +63,13 @@ public class Events implements Listener {
         if (reduction > 0.80) reduction = 0.80;
 
         double finalDamage = baseDamage * (1 - reduction);
+
+        // after you calculate finalDamage, insert this:
+        if (npcManager.isBot(victim.getUniqueId())) {
+            Bots bot = npcManager.getBot(victim.getUniqueId());
+            bot.damage(finalDamage);
+            return;
+        }
 
         // capture BEFORE damage
         double healthBefore = victim.getHealth();
@@ -353,6 +359,7 @@ public class Events implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         ScoreboardTask.removePlayer(event.getPlayer().getUniqueId());
     }
+
 
     public void sendActionBar(Player p, String message) {
         IChatBaseComponent cbc = IChatBaseComponent.ChatSerializer.a("{\"text\":\"" + message + "\"}");
