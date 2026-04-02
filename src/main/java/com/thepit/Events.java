@@ -1,5 +1,6 @@
 package com.thepit;
 
+import com.thepit.Megastreaks.MegastreakTypes;
 import com.thepit.Perks.PerkInfo;
 import com.thepit.Perks.PerkMenu;
 import com.thepit.Perks.PerkRegistry;
@@ -244,6 +245,8 @@ public class Events implements Listener {
 
         killerStats.addKill();
         victimStats.addDeath();
+        MegastreakTypes ms = killerStats.getMegastreak();
+
 
         int streak = killerStats.getKillstreak();
 
@@ -284,9 +287,26 @@ public class Events implements Listener {
             totalXP = (int)(totalXP * 0.9);
         }
 
+        if (ms != null) {
+            totalXP = (int)(totalXP * (1 + ms.getExtraXP() / 100.0));
+            totalGold = (int)(totalGold * (1 + ms.getExtraGOLD() / 100.0));
+        }
+
+
 
         killerStats.addGold(totalGold);
         killerStats.addXP(totalXP, killer);
+
+        //MegaStreak
+
+        for (MegastreakTypes type : MegastreakTypes.values()) {
+            if (streak == type.getRequiredKills()) {
+                killerStats.setMegastreak(type);
+                killer.sendMessage("§6MEGASTREAK ACTIVATED: §e" + type.name());
+                killer.getWorld().strikeLightningEffect(killer.getLocation());
+            }
+        }
+
 
         Map<UUID, Double> attackers = damageMap.get(victim.getUniqueId());
         if (attackers != null) {
@@ -562,17 +582,5 @@ public class Events implements Listener {
         }
         return sum;
     }
-
-
-
-
-
-
-
-
-
-
-
-
 
 }

@@ -1,5 +1,6 @@
 package com.thepit;
 
+import com.thepit.Megastreaks.MegastreakTypes;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ public class Stats {
     private int deaths = 0;
     private String[] perks = new String[3];
     private List<String> unlockedPerks = new ArrayList<>();
+    private MegastreakTypes megastreak = MegastreakTypes.OVERDRIVE; // or NONE if you add it
 
     private int level = 1;
     private int xp = 0;
@@ -350,5 +352,15 @@ public class Stats {
     }
 
 
+    //Megastreaks
+
+
+    public MegastreakTypes getMegastreak() {
+        return megastreak;
+    }
+
+    public void setMegastreak(MegastreakTypes type) {
+        this.megastreak = type;
+    }
 
 }
