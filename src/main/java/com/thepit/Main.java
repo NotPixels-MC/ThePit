@@ -1,12 +1,19 @@
 package com.thepit;
 
 import com.thepit.Commands.PerksCommand;
+import com.thepit.Commands.PrestigeCommand;
 import com.thepit.Commands.SetGoldCommand;
 import com.thepit.Commands.SetXPCommand;
 import com.thepit.Perks.PerkEffects;
+import com.thepit.Prestige.PrestigeManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Main extends JavaPlugin {
+
+    private PrestigeManager prestigeManager;
+    private StatsManager statsManager;
+
+
 
     private static Main instance;
 
@@ -23,6 +30,8 @@ public class Main extends JavaPlugin {
             // Load config
             Config.load();
 
+            prestigeManager = new PrestigeManager();
+            statsManager = new StatsManager();
 
 
 
@@ -45,6 +54,9 @@ public class Main extends JavaPlugin {
         getCommand("perks").setExecutor(new PerksCommand(upgradesMenu));
         getCommand("setxp").setExecutor(new SetXPCommand());
         getCommand("setgold").setExecutor(new SetGoldCommand());
+        getCommand("prestige").setExecutor(
+                new PrestigeCommand(prestigeManager, statsManager)
+        );
 
 
     }

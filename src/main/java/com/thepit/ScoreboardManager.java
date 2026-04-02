@@ -50,7 +50,7 @@ public class ScoreboardManager {
 
         // Line 7: Prestige (only if not 0)
         if (stats.getPrestige() > 0) {
-            setScore(ChatColor.LIGHT_PURPLE + "Prestige: " + ChatColor.WHITE + stats.getPrestige(), line--);
+            setScore(ChatColor.WHITE + "Prestige: " + ChatColor.RESET + ChatColor.YELLOW + stats.getPrestigeRomanNumeral(stats.getPrestige()), line--);
         }
 
         // Line 6: Level

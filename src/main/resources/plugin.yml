@@ -19,6 +19,11 @@ commands:
     description: Add an enchantment
     usage: /pitench <enchantment> <level>
     permission: thepit.pitench
+  prestige:
+    description: Prestige once you reach level 120
+    usage: /prestige
+    permission: myplugin.prestige
+
 
 
 permissions:
@@ -33,4 +38,9 @@ permissions:
   thepit.pitench:
     description: Allows adding enchantments
     default: op
+
+  thepit.prestige:
+    description: Allows the player to prestige
+    default: op
+
 

@@ -21,9 +21,15 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import static org.spigotmc.SpigotConfig.maxHealth;
 
 public class Events implements Listener {
+
+    private final Map<UUID, Map<UUID, Double>> damageMap = new HashMap<>();
 
     @EventHandler
     public void onDamage(EntityDamageByEntityEvent event) {
@@ -61,7 +67,13 @@ public class Events implements Listener {
         // capture BEFORE damage
         double healthBefore = victim.getHealth();
         double healthAfter = Math.max(0, healthBefore - finalDamage);
+        // Track damage for assists
+        damageMap.putIfAbsent(victim.getUniqueId(), new HashMap<>());
+        Map<UUID, Double> attackers = damageMap.get(victim.getUniqueId());
 
+        attackers.put(attacker.getUniqueId(),
+                attackers.getOrDefault(attacker.getUniqueId(), 0.0) + finalDamage
+        );
         // death
 
         // apply damage
@@ -106,6 +118,10 @@ public class Events implements Listener {
                 !p.isInsideVehicle() &&
                 !p.isSprinting() &&
                 !p.isBlocking();
+    }
+
+    private boolean isBlockingSword(Player p) {
+        return p.isBlocking();
     }
 
     private boolean hasLoreContaining(ItemStack item, String text) {
@@ -209,6 +225,10 @@ public class Events implements Listener {
                     gold += 2;
                     break;
 
+                case CHAINMAIL_HELMET:
+                    gold += 1;
+                    break;
+
                 default:
                     break;
             }
@@ -228,16 +248,71 @@ public class Events implements Listener {
         int streak = killerStats.getKillstreak();
 
         int baseXP = 5;
-        int bonusXP = streak;
-        int totalXP = baseXP + bonusXP;
+        int streakXPBonus = 0;
+
+        if (streak <=3) baseXP += 4;
+
+        if (streak == 3 || streak == 4) {
+            streakXPBonus = 3;
+        }
+
+        if (streak >= 5 && streak <= 19) {
+            streakXPBonus = 5;
+        }
+
+        if (streak >= 20) {
+           streakXPBonus = streak/10*3;
+
+           if (streakXPBonus >= 30) streakXPBonus = 30;
+
+        }
+
+        int streakerbonus = streakXPBonus*3;
+
+        if (killerStats.hasEquipped("streaker")) streakXPBonus = streakerbonus;
+
+        int totalXP = baseXP + streakXPBonus;
+
 
         int baseGold = 10;
-        int streakBonus = Math.min(streak, 3) * 4;
         int armorBonus = getArmorGoldValue(victim);
-        int totalGold = baseGold + streakBonus + armorBonus;
+
+
+        int totalGold = baseGold + armorBonus;
+        if (victimStats.getLevel() <= 20) {
+            totalGold = (int)(totalGold * 0.9);
+            totalXP = (int)(totalXP * 0.9);
+        }
+
 
         killerStats.addGold(totalGold);
         killerStats.addXP(totalXP, killer);
+
+        Map<UUID, Double> attackers = damageMap.get(victim.getUniqueId());
+        if (attackers != null) {
+
+            double maxHealth = victim.getMaxHealth();
+
+            for (Map.Entry<UUID, Double> entry : attackers.entrySet()) {
+                UUID assisterId = entry.getKey();
+                double damageDone = entry.getValue();
+
+                // Skip killer
+                if (assisterId.equals(killer.getUniqueId())) continue;
+
+                Player assister = Bukkit.getPlayer(assisterId);
+                if (assister == null) continue;
+
+                double assistPercent = damageDone / maxHealth;
+
+                // Ignore tiny assists (< 5%)
+                if (assistPercent < 0.01) continue;
+
+                handleAssistKill(assister, victim, assistPercent);
+            }
+
+            damageMap.remove(victim.getUniqueId());
+        }
 
         if (killerStats.hasEquipped("ghead")) {
             ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
@@ -248,6 +323,14 @@ public class Events implements Listener {
 
             killer.getInventory().addItem(head);
         }
+
+        killer.playSound(
+                killer.getLocation(),
+                Sound.ORB_PICKUP,
+                2.0f,
+                1.8f
+        );
+
 
         killer.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "KILL! " +
                 ChatColor.RESET + ChatColor.GRAY + "on " + victim.getDisplayName() +
@@ -281,6 +364,45 @@ public class Events implements Listener {
             victim.setHealth(victim.getMaxHealth());
         });
 
+    }
+
+    private void handleAssistKill(Player assister, Player victim, double assistPercent) {
+
+        Stats assisterStats = StatsManager.getStats(assister.getUniqueId());
+        Stats victimStats = StatsManager.getStats(victim.getUniqueId());
+
+        // Base rewards (same as kill, but no streak bonuses)
+        int baseXP = 5;
+        int baseGold = 10;
+
+        // Armor gold bonus still applies
+        int armorBonus = getArmorGoldValue(victim);
+
+        int totalGold = baseGold + armorBonus;
+        int totalXP = baseXP;
+
+        // Apply assist scaling
+        totalGold = (int)(totalGold * assistPercent);
+        totalXP = (int)(totalXP * assistPercent);
+
+        // Low‑level penalty
+        if (victimStats.getLevel() <= 20) {
+            totalGold = (int)(totalGold * 0.9);
+            totalXP = (int)(totalXP * 0.9);
+        }
+
+        // Give rewards
+        assisterStats.addGold(totalGold);
+        assisterStats.addXP(totalXP, assister);
+
+        // Send assist message
+        assister.sendMessage(String.format(
+                "§aASSIST! §e%d%% on [%s] +%dXP +%dg",
+                (int)(assistPercent * 100),
+                victim.getName(),
+                totalXP,
+                totalGold
+        ));
     }
 
     @EventHandler
