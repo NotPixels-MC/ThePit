@@ -1,5 +1,6 @@
 package com.thepit.Commands;
 
+import com.thepit.Main;
 import com.thepit.Prestige.PrestigeManager;
 import com.thepit.Stats;
 import com.thepit.StatsManager;
@@ -35,7 +36,8 @@ public class PrestigeCommand implements CommandExecutor {
             return true;
         }
 
-        Stats stats = statsManager.getStats(player.getUniqueId());
+        Stats stats = Main.getInstance().getStats(player.getUniqueId());
+
 
         if (!prestigeManager.canPrestige(player, stats)) {
             return true;

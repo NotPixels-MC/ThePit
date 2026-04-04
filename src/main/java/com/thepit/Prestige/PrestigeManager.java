@@ -42,7 +42,8 @@ public class PrestigeManager {
         // Reset level + XP
         stats.setPrestige(newPrestige);
         stats.setGold(0);
-        stats.setXP(0, player);
+        stats.setRawXP(0);
+
 
         // Reset level manually
         try {

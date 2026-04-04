@@ -41,7 +41,8 @@ public class PerkEffects implements Listener {
     //  PERMANENT PASSIVE PERKS
     // ============================
     private void applyPermanentPerks(Player p) {
-        Stats stats = StatsManager.getStats(p.getUniqueId());
+        Stats stats = Main.getInstance().getStats(p.getUniqueId());
+
 
         // Thick (+2 hearts)
         if (stats.hasEquipped("thick")) {
@@ -57,7 +58,8 @@ public class PerkEffects implements Listener {
     //  SPAWN ITEMS PERKS
     // ============================
     private void giveSpawnItems(Player p) {
-        Stats stats = StatsManager.getStats(p.getUniqueId());
+        Stats stats = Main.getInstance().getStats(p.getUniqueId());
+
 
         // Fishing Rod
         if (stats.hasEquipped("rod")) {

@@ -1,5 +1,6 @@
 package com.thepit.Commands;
 
+import com.thepit.Main;
 import com.thepit.Stats;
 import com.thepit.StatsManager;
 import org.bukkit.Bukkit;
@@ -42,7 +43,8 @@ public class SetGoldCommand implements CommandExecutor {
         }
 
         // Apply gold
-        Stats stats = StatsManager.getStats(target.getUniqueId());
+        Stats stats = Main.getInstance().getStats(target.getUniqueId());
+
         stats.setGold(amount);
 
         sender.sendMessage("§aSet §e" + target.getName() + "§a's gold to §6" + amount + "g§a.");

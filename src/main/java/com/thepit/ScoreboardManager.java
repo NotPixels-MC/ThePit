@@ -20,7 +20,8 @@ public class ScoreboardManager {
 
     public ScoreboardManager(Player player) {
         this.player = player;
-        this.stats = StatsManager.getStats(player.getUniqueId());
+        this.stats = Main.getInstance().getStats(player.getUniqueId());
+
         this.scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
         this.objective = scoreboard.registerNewObjective("ThePit", "dummy");
         this.objective.setDisplaySlot(DisplaySlot.SIDEBAR);

@@ -16,7 +16,8 @@ public class UpgradesMenu {
     public void openUpgradesMenu(Player player) {
         Inventory inv = Bukkit.createInventory(null, 45, "Upgrades");
 
-        Stats stats = StatsManager.getStats(player.getUniqueId());
+        Stats stats = Main.getInstance().getStats(player.getUniqueId());
+
         int level = stats.getLevel();
 
         // Equipped perks
@@ -28,6 +29,8 @@ public class UpgradesMenu {
         inv.setItem(12, buildPerkSlot(perk1, 10, level, 1));
         inv.setItem(13, buildPerkSlot(perk2, 35, level, 2));
         inv.setItem(14, buildPerkSlot(perk3, 70, level, 3));
+        inv.setItem(15, buildKillstreakButton());
+
 
         player.openInventory(inv);
     }
@@ -79,4 +82,20 @@ public class UpgradesMenu {
         if (level >= 10) return "§9";
         return "§7";
     }
+
+    private ItemStack buildKillstreakButton() {
+        ItemStack item = new ItemStack(Material.NETHER_STAR);
+        ItemMeta meta = item.getItemMeta();
+
+        meta.setDisplayName("§bChoose Killstreak");
+        meta.setLore(Arrays.asList(
+                "§7Select your megastreak.",
+                "",
+                "§eClick to open!"
+        ));
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
 }

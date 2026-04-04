@@ -1,9 +1,12 @@
 package com.thepit;
 
+import com.thepit.Megastreaks.MegastreakMenu;
 import com.thepit.Megastreaks.MegastreakTypes;
 import com.thepit.Perks.PerkInfo;
 import com.thepit.Perks.PerkMenu;
 import com.thepit.Perks.PerkRegistry;
+import com.thepit.Utils.EnchantUtils;
+import com.thepit.Utils.XPUtils;
 import net.minecraft.server.v1_8_R3.IChatBaseComponent;
 import net.minecraft.server.v1_8_R3.PacketPlayOutChat;
 import org.bukkit.*;
@@ -13,8 +16,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerItemBreakEvent;
+import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -28,7 +34,6 @@ import java.util.UUID;
 public class Events implements Listener {
 
     private final Map<UUID, Map<UUID, Double>> damageMap = new HashMap<>();
-    private final NPCManager npcManager = Main.getInstance().getNPCManager();
 
     @EventHandler
     public void onDamage(EntityDamageByEntityEvent event) {
@@ -39,9 +44,13 @@ public class Events implements Listener {
 
         Player victim = (Player) event.getEntity();
         Player attacker = (Player) event.getDamager();
+        Stats attackerstats = Main.getInstance().getStats(attacker.getUniqueId());
 
         // Keep vanilla knockback + animation
         event.setDamage(0); // prevents vanilla damage but keeps KB
+
+        doPerunDamage(victim, attacker);
+        getSpikeyDamage(attacker);
 
         double baseDamage = getWeaponDamage(attacker.getItemInHand());
 
@@ -57,19 +66,18 @@ public class Events implements Listener {
             attacker.sendMessage("§dLore bonus! §e+2 damage");
         }
 
+        baseDamage = baseDamage * getSharpDamage(attacker);
+        baseDamage = baseDamage * getPainFocusDamage(attacker);
+
+
         // armor reduction
         double armorPoints = getArmorPoints(victim);
         double reduction = armorPoints * 0.04;
         if (reduction > 0.80) reduction = 0.80;
 
         double finalDamage = baseDamage * (1 - reduction);
-
+        DoLifestealHeals(attacker, baseDamage);
         // after you calculate finalDamage, insert this:
-        if (npcManager.isBot(victim.getUniqueId())) {
-            Bots bot = npcManager.getBot(victim.getUniqueId());
-            bot.damage(finalDamage);
-            return;
-        }
 
         // capture BEFORE damage
         double healthBefore = victim.getHealth();
@@ -91,6 +99,46 @@ public class Events implements Listener {
             return;
         } else {
         victim.setHealth(healthAfter); }
+
+        if (checkExecutioner(attacker, victim, healthAfter)) {
+            event.setCancelled(true);
+            healthAfter = victim.getMaxHealth();
+            handleKill(attacker, victim);
+            float pitch = 0.5f + (float)(Math.random() * 0.3);
+
+            attacker.playSound(
+                    attacker.getLocation(),
+                    Sound.VILLAGER_DEATH,
+                    2.0f,
+                    pitch
+            );
+
+
+            for (int i = 0; i < 30; i++) {
+
+                // Random offset between -0.2 and +0.2
+                double offsetX = (Math.random() * 0.4) - 0.2;
+
+                double offsetZ = (Math.random() * 0.4) - 0.2;
+
+                Location loc = victim.getLocation().clone().add(offsetX, 1, offsetZ);
+
+                attacker.spigot().playEffect(
+                        loc,
+                        Effect.TILE_DUST,
+                        Material.REDSTONE_BLOCK.getId(),
+                        0,      // data
+                        0, 0, 0, // offsetX, offsetY, offsetZ (0 = no spread)
+                        0,      // speed (0 = no velocity)
+                        1,      // particle count per burst
+                        50      // radius (ignored for single-player)
+                );
+
+            }
+
+            return;
+        }
+
 
         // hearts
         int maxHearts = (int) Math.ceil(victim.getMaxHealth() / 2.0);
@@ -153,6 +201,7 @@ public class Events implements Listener {
             case STONE_SWORD: return 5;
             case IRON_SWORD: return 6;
             case DIAMOND_SWORD: return 7;
+            case GOLD_SWORD: return 6.5;
 
             case WOOD_AXE: return 5;
             case STONE_AXE: return 6;
@@ -246,28 +295,29 @@ public class Events implements Listener {
 
     private void handleKill(Player killer, Player victim) {
 
-        Stats killerStats = StatsManager.getStats(killer.getUniqueId());
-        Stats victimStats = StatsManager.getStats(victim.getUniqueId());
+        Stats killerStats = Main.getInstance().getStats(killer.getUniqueId());
+        Stats victimStats = Main.getInstance().getStats(victim.getUniqueId());
 
         killerStats.addKill();
         victimStats.addDeath();
 
         int streak = killerStats.getKillstreak();
 
+        // Megastreak activation
+        MegastreakTypes selected = killerStats.getSelectedMegastreak();
+
+        if (streak == selected.getRequiredKills()) {
+            killerStats.setMegastreak(selected);
+            killer.sendMessage("§6MEGASTREAK ACTIVATED: §e" + selected.name());
+            killer.getWorld().strikeLightningEffect(killer.getLocation());
+        }
+
+
         // Calculate rewards
         RewardResult rewards = calculateRewards(killer, victim);
 
         killerStats.addGold(rewards.gold);
         killerStats.addXP(rewards.xp, killer);
-
-        // Megastreak activation
-        for (MegastreakTypes type : MegastreakTypes.values()) {
-            if (streak == type.getRequiredKills()) {
-                killerStats.setMegastreak(type);
-                killer.sendMessage("§6MEGASTREAK ACTIVATED: §e" + type.name());
-                killer.getWorld().strikeLightningEffect(killer.getLocation());
-            }
-        }
 
         // Assist rewards
         Map<UUID, Double> attackers = damageMap.get(victim.getUniqueId());
@@ -312,14 +362,25 @@ public class Events implements Listener {
                 ChatColor.AQUA + " +" + rewards.xp + " XP " +
                 ChatColor.GOLD + "+" + rewards.gold + "g ");
 
+        EnchantUtils.handleDeathInventory(victim);
+
+        victim.getInventory().setChestplate (new ItemStack(Material.CHAINMAIL_CHESTPLATE));
+        victim.getInventory().setLeggings (new ItemStack(Material.CHAINMAIL_LEGGINGS));
+        victim.getInventory().setBoots (new ItemStack(Material.CHAINMAIL_BOOTS));
+        victim.getInventory().setItem (0, new ItemStack(Material.IRON_SWORD));
+
+// Respawn victim
+        respawnPlayer(victim);
+
         // Respawn victim
         respawnPlayer(victim);
     }
 
     private void handleAssistKill(Player assister, Player victim, double assistPercent) {
 
-        Stats assisterStats = StatsManager.getStats(assister.getUniqueId());
-        Stats victimStats = StatsManager.getStats(victim.getUniqueId());
+        Stats assisterStats = Main.getInstance().getStats(assister.getUniqueId());
+        Stats victimStats = Main.getInstance().getStats(victim.getUniqueId());
+
 
         // Base rewards (same as kill, but no streak bonuses)
         int baseXP = 5;
@@ -373,7 +434,8 @@ public class Events implements Listener {
         if (!(event.getWhoClicked() instanceof Player)) return;
 
         Player player = (Player) event.getWhoClicked();
-        Stats stats = StatsManager.getStats(player.getUniqueId());
+        Stats stats = Main.getInstance().getStats(player.getUniqueId());
+
 
         String title = event.getView().getTitle();
 
@@ -400,6 +462,12 @@ public class Events implements Listener {
             if (slot == 14) {
                 if (level < 70) player.sendMessage("§c§lLOCKED! §7This perk slot is locked.");
                 else new PerkMenu().openPerkMenu(player, 3);
+            }
+
+            if (slot == 15) {
+                // Open killstreak menu
+                MegastreakMenu.open(player);
+                return;
             }
 
             return;
@@ -517,36 +585,45 @@ public class Events implements Listener {
     //REWARDS
     private RewardResult calculateRewards(Player killer, Player victim) {
 
-        Stats killerStats = StatsManager.getStats(killer.getUniqueId());
-        Stats victimStats = StatsManager.getStats(victim.getUniqueId());
+        Stats killerStats = Main.getInstance().getStats(killer.getUniqueId());
+        Stats victimStats = Main.getInstance().getStats(victim.getUniqueId());
         MegastreakTypes ms = killerStats.getMegastreak();
 
+        int maxXP = 400;
+        int maxGold = 2500;
         int streak = killerStats.getKillstreak();
+        int XPBoostLevel = getXPBoost(killer);
 
         // XP calculation
+
         int baseXP = 5;
         int streakXPBonus = 0;
 
-        if (streak <= 3) baseXP += 4;
-        if (streak == 3 || streak == 4) streakXPBonus = 3;
-        if (streak >= 5 && streak <= 19) streakXPBonus = 5;
+        streakXPBonus += XPUtils.getStreakXP(streak, getSweaty(killer));
 
-        if (streak >= 20) {
-            streakXPBonus = streak / 10 * 3;
-            if (streakXPBonus >= 30) streakXPBonus = 30;
+        int GivenXP = baseXP + streakXPBonus;
+        if (ms != null && streak >= ms.getRequiredKills()) {
+            GivenXP = (int)(GivenXP * (1 + ms.getExtraXP() / 100.0));
         }
 
-        // Streaker perk
-        if (killerStats.hasEquipped("streaker")) {
-            streakXPBonus *= 3;
-        }
+        if (GivenXP > maxXP) GivenXP = maxXP;
 
-        int totalXP = baseXP + streakXPBonus;
+        int totalXP = GivenXP;
+        if (XPBoostLevel > 0) {
+            totalXP = (int)(totalXP * (1 + 0.1 * XPBoostLevel));
+        }
 
         // Gold calculation
         int baseGold = 10;
         int armorBonus = getArmorGoldValue(victim);
+
         int totalGold = baseGold + armorBonus;
+
+        if (ms != null) {
+            totalGold = (int)(totalGold * (1 + ms.getExtraGOLD() / 100.0));
+        }
+
+        if (totalGold > maxGold) totalGold = maxGold;
 
         // Low-level penalty
         if (victimStats.getLevel() <= 20) {
@@ -554,11 +631,11 @@ public class Events implements Listener {
             totalGold = (int)(totalGold * 0.9);
         }
 
-        // Megastreak bonus
-        if (ms != null) {
-            totalXP = (int)(totalXP * (1 + ms.getExtraXP() / 100.0));
+
+        if (ms != null && streak >= ms.getRequiredKills()) {
             totalGold = (int)(totalGold * (1 + ms.getExtraGOLD() / 100.0));
         }
+
 
         return new RewardResult(totalXP, totalGold);
     }
@@ -598,4 +675,224 @@ public class Events implements Listener {
         });
     }
 
+    public boolean checkExecutioner(Player attacker, Player victim, double healthAfter) {
+        if
+                (hasLoreContaining(attacker.getItemInHand(), "executioner i".toLowerCase()) && healthAfter < 1.0
+        ||
+                hasLoreContaining(attacker.getItemInHand(), "executioner) ii".toLowerCase()) && healthAfter < 1.5
+        ||
+                hasLoreContaining(attacker.getItemInHand(), "executioner iii".toLowerCase()) && healthAfter < 2.0)
+
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public int getSweaty(Player p) {
+        int level = 0;
+
+        if (hasLoreContaining(p.getItemInHand(), "sweaty i".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "sweaty ii".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "sweaty iii".toLowerCase())) level += 1;
+
+        if (hasLoreContaining(p.getInventory().getLeggings(), "sweaty i".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getInventory().getLeggings(), "sweaty ii".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getInventory().getLeggings(), "sweaty iii".toLowerCase())) level += 1;
+
+        return level;
+    }
+
+    public int getXPBoost(Player p) {
+        int level = 0;
+
+        if (hasLoreContaining(p.getItemInHand(), "xp boost i".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "xp boost ii".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "xp boost iii".toLowerCase())) level += 1;
+
+        if (hasLoreContaining(p.getInventory().getLeggings(), "xp boost i".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getInventory().getLeggings(), "xp boost ii".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getInventory().getLeggings(), "xp boost iii".toLowerCase())) level += 1;
+
+        return level;
+
+    }
+
+    public int getPerunLevel(Player p) {
+        int level = 0;
+
+        if (hasLoreContaining(p.getItemInHand(), "s wrath i".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "s wrath ii".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "s wrath iii".toLowerCase())) level += 1;
+
+        return level;
+
+    }
+
+    public int getLifestealLevel(Player p) {
+        int level = 0;
+
+        if (hasLoreContaining(p.getItemInHand(), "lifesteal i".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "lifesteal ii".toLowerCase())) level += 1;
+        if (hasLoreContaining(p.getItemInHand(), "lifesteal iii".toLowerCase())) level += 1;
+
+        return level;
+
+    }
+
+    public double getSpikeyDamage(Player p) {
+        double damage = 0.0;
+
+        if (hasLoreContaining(p.getInventory().getHelmet(), "spikey i".toLowerCase())) damage = 0.125;
+        if (hasLoreContaining(p.getInventory().getHelmet(), "spikey ii".toLowerCase())) damage = 0.25;
+        if (hasLoreContaining(p.getInventory().getHelmet(), "spikey iii".toLowerCase())) damage = 0.5;
+        p.playSound(p.getLocation(), Sound.VILLAGER_HIT, 0.35f, 2.0f);
+
+        return damage ;
+    }
+
+    public Double getSharpDamage(Player p) {
+        double damage = 1.0;
+
+        if (hasLoreContaining(p.getItemInHand(), "sharp i".toLowerCase())) damage = 1.04;
+        if (hasLoreContaining(p.getItemInHand(), "sharp ii".toLowerCase())) damage = 1.07;
+        if (hasLoreContaining(p.getItemInHand(), "sharp iii".toLowerCase())) damage = 1.12;
+
+        return damage;
+    }
+
+    public Double getPainFocusDamage(Player p) {
+        double damage = 1.0;
+        double missingHealth = p.getMaxHealth() - p.getHealth();
+
+        if (hasLoreContaining(p.getItemInHand(), "pain focus i".toLowerCase())) damage = missingHealth * 0.01;
+        if (hasLoreContaining(p.getItemInHand(), "pain focus ii".toLowerCase())) damage = missingHealth * 0.02;
+        if (hasLoreContaining(p.getItemInHand(), "pain focus iii".toLowerCase())) damage = missingHealth * 0.05;
+
+        return damage;
+    }
+
+    public void doPerunDamage(Player victim, Player attacker) {
+        int level = getPerunLevel(attacker);
+        Stats attackerstats = Main.getInstance().getStats(attacker.getUniqueId());
+
+// Only increment combo if attacker actually has Perun
+        if (level > 0) {
+            attackerstats.addCombo();
+        }
+
+        int combo = attackerstats.getPeruncombo();
+
+// ----------------------
+// PERUN I (5 hits)
+// ----------------------
+        if (level == 1 && combo == 5) {
+
+            attackerstats.resetCombo();
+
+            victim.getWorld().strikeLightningEffect(victim.getLocation());
+
+            if (victim.getHealth() < 1.5) {
+                handleKill(attacker, victim);
+            } else {
+                victim.setHealth(victim.getHealth() - 1.5);
+            }
+        }
+
+// ----------------------
+// PERUN II (4 hits)
+// ----------------------
+        else if (level == 2 && combo == 4) {
+
+            attackerstats.resetCombo();
+
+            victim.getWorld().strikeLightningEffect(victim.getLocation());
+
+            if (victim.getHealth() < 2.0) {
+                handleKill(attacker, victim);
+            } else {
+                victim.setHealth(victim.getHealth() - 2.0);
+            }
+        }
+
+// ----------------------
+// PERUN III (4 hits + armor bonus)
+// ----------------------
+        else if (level == 3 && combo == 4) {
+
+            attackerstats.resetCombo();
+
+            double extraPerun = 1.0;
+
+            // Helmet
+            if (victim.getInventory().getHelmet() != null &&
+                    victim.getInventory().getHelmet().getType() == Material.DIAMOND_HELMET) {
+                extraPerun += 1.0;
+            }
+
+            // Chestplate
+            if (victim.getInventory().getChestplate() != null &&
+                    victim.getInventory().getChestplate().getType() == Material.DIAMOND_CHESTPLATE) {
+                extraPerun += 1.0;
+            }
+
+            // Leggings
+            if (victim.getInventory().getLeggings() != null &&
+                    victim.getInventory().getLeggings().getType() == Material.DIAMOND_LEGGINGS) {
+                extraPerun += 1.0;
+            }
+
+            // Boots
+            if (victim.getInventory().getBoots() != null &&
+                    victim.getInventory().getBoots().getType() == Material.DIAMOND_BOOTS) {
+                extraPerun += 1.0;
+            }
+
+            victim.getWorld().strikeLightningEffect(victim.getLocation());
+
+            if (victim.getHealth() < extraPerun) {
+                handleKill(attacker, victim);
+            } else {
+                victim.setHealth(victim.getHealth() - extraPerun);
+            }
+        }
+    }
+
+    public void DoLifestealHeals(Player attacker, double damageDealt) {
+        int level = getLifestealLevel(attacker);
+
+        if (level == 0) return;
+
+        double healAmount = 0.0;
+
+        if (level == 1) healAmount = 0.04 * damageDealt;
+        if (level == 2) healAmount = 0.08 * damageDealt;
+        if (level == 3) healAmount = 0.13 * damageDealt;
+
+        if (healAmount > 1.5) healAmount = 1.5;
+
+        double healthCheck = 20.0;
+        healthCheck -= healAmount;
+        if (attacker.getHealth() - healthCheck <= 0.0) return;
+        attacker.setHealth(attacker.getHealth() + healAmount);
+    }
+
+    @EventHandler
+    public void onPlayerDamage(EntityDamageEvent e) {
+        if (e.getCause().equals(EntityDamageEvent.DamageCause.FALL)) {
+            e.setCancelled(true);
+        }
+    }
+    @EventHandler
+    public void onPlayerLooseHunger(FoodLevelChangeEvent e) {
+        e.setFoodLevel(20);
+    }
+
+    @EventHandler
+    public void onPlayerUseItem(PlayerItemDamageEvent e) {
+        e.setCancelled(true);
+    }
+
 }
+

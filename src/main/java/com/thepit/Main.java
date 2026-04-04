@@ -1,21 +1,29 @@
 package com.thepit;
 
-import com.thepit.Commands.PerksCommand;
-import com.thepit.Commands.PrestigeCommand;
-import com.thepit.Commands.SetGoldCommand;
-import com.thepit.Commands.SetXPCommand;
+import com.thepit.Commands.*;
+import com.thepit.Megastreaks.MegastreakMenuListener;
 import com.thepit.Perks.PerkEffects;
 import com.thepit.Prestige.PrestigeManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public class Main extends JavaPlugin {
 
     private PrestigeManager prestigeManager;
     private StatsManager statsManager;
+
+    private Map<UUID, Stats> statsMap = new HashMap<>();
 
     private static Main instance;
 
@@ -25,22 +33,19 @@ public class Main extends JavaPlugin {
             instance = this;
 
             saveDefaultConfig();
-
             Config.load();
 
             prestigeManager = new PrestigeManager();
-            statsManager = new StatsManager();
-
-            // Initialize NPC systems
-
-
-            // Create a bot
-            Location botSpawn = getBotSpawn();
-
+            statsManager = new StatsManager(this);
 
             // Register events
             getServer().getPluginManager().registerEvents(new Events(), this);
             getServer().getPluginManager().registerEvents(new PerkEffects(this), this);
+            getServer().getPluginManager().registerEvents(new MegastreakMenuListener(), this);
+
+
+            // ⭐ REGISTER STATS LOADING/SAVING ⭐
+            registerStatsEvents();
 
             ScoreboardTask.start();
 
@@ -59,26 +64,46 @@ public class Main extends JavaPlugin {
         getCommand("prestige").setExecutor(
                 new PrestigeCommand(prestigeManager, statsManager)
         );
+        getCommand("setenchant").setExecutor(new SetEnchantCommand());
+        getCommand("addlives").setExecutor(new AddLivesCommand());
+        getCommand("setunbreakable").setExecutor(new setUnbreakableCommand());
+
     }
 
     public static Main getInstance() {
         return instance;
     }
 
-    public Location getBotSpawn() {
-        FileConfiguration config = getConfig();
-
-        double x = config.getDouble("bot-spawn.x");
-        double y = config.getDouble("bot-spawn.y");
-        double z = config.getDouble("bot-spawn.z");
-        float yaw = (float) config.getDouble("bot-spawn.yaw");
-        float pitch = (float) config.getDouble("bot-spawn.pitch");
-        String worldName = config.getString("bot-spawn.world");
-
-        World world = Bukkit.getWorld(worldName);
-
-        return new Location(world, x, y, z, yaw, pitch);
+    public Stats getStats(UUID uuid) {
+        return statsMap.get(uuid);
     }
 
+    private void registerStatsEvents() {
+        getServer().getPluginManager().registerEvents(new Listener() {
 
+            @EventHandler
+            public void onJoin(PlayerJoinEvent e) {
+                UUID uuid = e.getPlayer().getUniqueId();
+
+                Stats stats = statsManager.load(uuid);
+                statsMap.put(uuid, stats);
+
+                System.out.println("Loaded stats for " + uuid);
+            }
+
+            @EventHandler
+            public void onQuit(PlayerQuitEvent e) {
+                UUID uuid = e.getPlayer().getUniqueId();
+
+                Stats stats = statsMap.get(uuid);
+                if (stats != null) {
+                    statsManager.save(stats);
+                    System.out.println("Saved stats for " + uuid);
+                }
+
+                statsMap.remove(uuid);
+            }
+
+        }, this);
+    }
 }

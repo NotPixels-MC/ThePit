@@ -1,5 +1,6 @@
 package com.thepit.Perks;
 
+import com.thepit.Main;
 import com.thepit.Stats;
 import com.thepit.StatsManager;
 import org.bukkit.Bukkit;
@@ -19,7 +20,8 @@ public class PerkMenu {
 
         Inventory inv = Bukkit.createInventory(null, 54, "Choose a perk");
 
-        Stats stats = StatsManager.getStats(player.getUniqueId());
+        Stats stats = Main.getInstance().getStats(player.getUniqueId());
+
 
 
         // Fill everything with border glass

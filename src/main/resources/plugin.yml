@@ -23,6 +23,18 @@ commands:
     description: Prestige once you reach level 120
     usage: /prestige
     permission: myplugin.prestige
+  setenchant:
+    description: Set an enchant on an item
+    usage: /setenchant <player> <enchant> <level>
+    permission: thepit.setenchant
+  addlives:
+    description: Add lives to the held item
+    usage: /addlives <lives> <maxLives>
+    permission: pit.addlives
+  setunbreakable:
+    description: Set the held item to be unbreakable
+    usage: /setunbreakable
+    permission: pit.unbreakable
 
 
 
@@ -43,4 +55,13 @@ permissions:
     description: Allows the player to prestige
     default: op
 
+  thepit.setenchant:
+    description: Allows setting enchantments on items
+    default: op
+  thepit.addlives:
+    description: Allows adding lives to items
+    default: op
+  thepit.unbreakable:
+    description: Allows making items unbreakable
+    default: op
 
