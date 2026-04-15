@@ -2,12 +2,18 @@ package com.thepit;
 
 import com.thepit.Commands.*;
 import com.thepit.Megastreaks.MegastreakMenuListener;
+import com.thepit.Mystics.MysticSounds;
 import com.thepit.Perks.PerkEffects;
 import com.thepit.Prestige.PrestigeManager;
+import com.thepit.Utils.Rank;
+import com.thepit.Utils.RankManager;
+import com.thepit.tablist.TablistManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -15,6 +21,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -34,8 +41,10 @@ public class Main extends JavaPlugin {
 
             saveDefaultConfig();
             Config.load();
+            RankManager.loadRanks(this);
 
             prestigeManager = new PrestigeManager();
+            MysticSounds sounds = new MysticSounds(this);
             statsManager = new StatsManager(this);
 
             // Register events
@@ -67,6 +76,8 @@ public class Main extends JavaPlugin {
         getCommand("setenchant").setExecutor(new SetEnchantCommand());
         getCommand("addlives").setExecutor(new AddLivesCommand());
         getCommand("setunbreakable").setExecutor(new setUnbreakableCommand());
+
+        TablistManager.start();
 
     }
 
@@ -106,4 +117,7 @@ public class Main extends JavaPlugin {
 
         }, this);
     }
+
+    public static Map<String, Rank> ranks = new HashMap<>();
+
 }

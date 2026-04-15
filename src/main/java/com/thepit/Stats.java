@@ -109,6 +109,27 @@ public class Stats {
         return bracketColor + "[" + levelColor + level + bracketColor + "]";
     }
 
+    public String getDisplayLevelNoBrackets(int level) {
+
+        String levelColor = "§7";
+
+        if (level >= 0)   levelColor = "§7";
+        if (level >= 10)  levelColor = "§9";
+        if (level >= 20)  levelColor = "§3";
+        if (level >= 30)  levelColor = "§2";
+        if (level >= 40)  levelColor = "§a";
+        if (level >= 50)  levelColor = "§e";
+        if (level >= 60)  levelColor = "§6§l";
+        if (level >= 70)  levelColor = "§c§l";
+        if (level >= 80)  levelColor = "§4§l";
+        if (level >= 90)  levelColor = "§5§l";
+        if (level >= 100) levelColor = "§d§l";
+        if (level >= 110) levelColor = "§f§l";
+        if (level == 120) levelColor = "§b§l";
+
+        return levelColor + level;
+    }
+
     public String getBracketColor(int prestige) {
         String bracketcolor = "§7";
 

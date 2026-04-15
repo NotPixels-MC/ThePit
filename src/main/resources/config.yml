@@ -10,6 +10,25 @@ player-spawn:
   pitch: 0
   world: "world_elements"
 
+#Ranks
+Ranks:
+  owner:
+    prefix: "&4[Owner] "
+    color: "&4"
+    permission: "pit.rank.owner"
+
+  admin:
+    prefix: "&c[Admin] "
+    color: "&c"
+    permission: "pit.rank.admin"
+
+  default:
+    prefix: "&7"
+    color: "&7"
+    permission: "pit.rank.default"
+
+mystic-drop-chance: 0.01 # 1% chance to drop a mystic.
+
 #Bot Data
 bot-skins:
   - "Notch"

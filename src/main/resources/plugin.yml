@@ -64,4 +64,15 @@ permissions:
   thepit.unbreakable:
     description: Allows making items unbreakable
     default: op
+  thepit.rank.owner:
+      description: "Owner rank"
+      default: op
+  thepit.rank.admin:
+    description: "Admin rank"
+    default: false
+  thepit.rank.default:
+    description: "Default rank"
+    default: true
+
+
 

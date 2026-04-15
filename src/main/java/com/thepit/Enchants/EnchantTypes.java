@@ -5,17 +5,7 @@ import org.bukkit.Material;
 
 public enum EnchantTypes {
 
-    EXECUTIONER("§dRARE! §9Executioner", "SWORD", new String[]{
-            "Hitting an enemy to below §c1❤§7 instantly kills them",
-            "Hitting an enemy to below §c1.5❤§7 instantly kills them",
-            "Hitting an enemy to below §c2❤§7 instantly kills them"
-    }, 2),
-
-    LIFESTEAL("Lifesteal", "SWORD", new String[]{
-            "Heal for §c13%§7 of damage dealt up to §c1.5❤",
-            "Heal for §c13%§7 of damage dealt up to §c1.5❤",
-            "Heal for §c13%§7 of damage dealt up to §c1.5❤"
-    }, 2),
+    //global
 
     SWEATY("Sweaty", "ALL", new String[]{
             "§b+20%§7 XP from streak XP bonus",
@@ -28,6 +18,21 @@ public enum EnchantTypes {
             "Earn §b+20% XP §7from kills",
             "Earn §b+30% XP §7from kills"
     }, 1),
+
+    //sword
+
+    EXECUTIONER("§dRARE! §9Executioner", "SWORD", new String[]{
+            "Hitting an enemy to below §c1❤§7 instantly kills them",
+            "Hitting an enemy to below §c1.5❤§7 instantly kills them",
+            "Hitting an enemy to below §c2❤§7 instantly kills them"
+    }, 2),
+
+    LIFESTEAL("Lifesteal", "SWORD", new String[]{
+            "Heal for §c13%§7 of damage dealt up to §c1.5❤",
+            "Heal for §c13%§7 of damage dealt up to §c1.5❤",
+            "Heal for §c13%§7 of damage dealt up to §c1.5❤"
+    }, 2),
+
 
     PERUN("§dRARE! §9Combo: Perun's Wrath", "SWORD", new String[]{
             "Each §efifth §7hit strikes §elightning §7for §c1.5❤",
@@ -51,7 +56,17 @@ public enum EnchantTypes {
             "Deal §c+1%§7 damage per §c❤§7 you're missing",
             "Deal §c+2%§7 damage per §c❤§7 you're missing",
             "Deal §c+5%§7 damage per §c❤§7 you're missing"
+    }, 1),
+
+    //Pants
+
+    PEROXIDE("Peroxide", "PANTS", new String[]{
+            "Heal §c0.7❤ when hit (1.5s cooldown)",
+            "Heal §c0.7❤ when hit (1.5s cooldown)",
+            "Heal §c0.7❤ when hit (1.5s cooldown)"
     }, 1);
+
+
 
 
     private final String displayName;

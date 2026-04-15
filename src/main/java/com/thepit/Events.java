@@ -2,10 +2,14 @@ package com.thepit;
 
 import com.thepit.Megastreaks.MegastreakMenu;
 import com.thepit.Megastreaks.MegastreakTypes;
+import com.thepit.Mystics.MysticDropManager;
+import com.thepit.Mystics.MysticSounds;
 import com.thepit.Perks.PerkInfo;
 import com.thepit.Perks.PerkMenu;
 import com.thepit.Perks.PerkRegistry;
 import com.thepit.Utils.EnchantUtils;
+import com.thepit.Utils.Rank;
+import com.thepit.Utils.RankManager;
 import com.thepit.Utils.XPUtils;
 import net.minecraft.server.v1_8_R3.IChatBaseComponent;
 import net.minecraft.server.v1_8_R3.PacketPlayOutChat;
@@ -19,8 +23,8 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.PlayerItemBreakEvent;
-import org.bukkit.event.player.PlayerItemDamageEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -53,6 +57,7 @@ public class Events implements Listener {
         getSpikeyDamage(attacker);
 
         double baseDamage = getWeaponDamage(attacker.getItemInHand());
+        double enchantMultiplierDamage = 1.0;
 
         // crit
         if (isCriticalHit(attacker)) {
@@ -66,8 +71,8 @@ public class Events implements Listener {
             attacker.sendMessage("§dLore bonus! §e+2 damage");
         }
 
-        baseDamage = baseDamage * getSharpDamage(attacker);
-        baseDamage = baseDamage * getPainFocusDamage(attacker);
+        enchantMultiplierDamage += getSharpDamage(attacker);
+        enchantMultiplierDamage += getPainFocusDamage(attacker);
 
 
         // armor reduction
@@ -230,7 +235,7 @@ public class Events implements Listener {
         switch (item.getType()) {
             case LEATHER_HELMET: return 1;
             case LEATHER_CHESTPLATE: return 3;
-            case LEATHER_LEGGINGS: return 2;
+            case LEATHER_LEGGINGS: return 5;
             case LEATHER_BOOTS: return 1;
 
             case GOLD_HELMET: return 2;
@@ -308,7 +313,6 @@ public class Events implements Listener {
 
         if (streak == selected.getRequiredKills()) {
             killerStats.setMegastreak(selected);
-            killer.sendMessage("§6MEGASTREAK ACTIVATED: §e" + selected.name());
             killer.getWorld().strikeLightningEffect(killer.getLocation());
         }
 
@@ -358,7 +362,7 @@ public class Events implements Listener {
         killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 2.0f, 1.8f);
 
         killer.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "KILL! " +
-                ChatColor.RESET + ChatColor.GRAY + "on " + victim.getDisplayName() +
+                ChatColor.RESET + ChatColor.GRAY + "on " + victimStats.getDisplayLevel(victimStats.getLevel(), victimStats.getPrestige()) + victim.getDisplayName() +
                 ChatColor.AQUA + " +" + rewards.xp + " XP " +
                 ChatColor.GOLD + "+" + rewards.gold + "g ");
 
@@ -593,6 +597,16 @@ public class Events implements Listener {
         int maxGold = 2500;
         int streak = killerStats.getKillstreak();
         int XPBoostLevel = getXPBoost(killer);
+        double mysticChance = Main.getInstance().getConfig().getDouble("mystic-drop-chance");
+
+        // Mystic drop
+        if (Math.random() < mysticChance) {
+            MysticSounds sounds = new MysticSounds(Main.getInstance());
+            new MysticDropManager().dropMystic(victim);
+            new MysticDropManager().spawnFloatingWater(victim.getLocation());
+            sounds.playFreshDrop(killer.getLocation());
+            killer.sendMessage(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "MYSTIC DROP!" + ChatColor.RESET + ChatColor.GRAY + "from killing" + victimStats.getDisplayLevel(victimStats.getLevel(), victimStats.getPrestige()) + victim.getName());
+        }
 
         // XP calculation
 
@@ -610,7 +624,7 @@ public class Events implements Listener {
 
         int totalXP = GivenXP;
         if (XPBoostLevel > 0) {
-            totalXP = (int)(totalXP * (1 + 0.1 * XPBoostLevel));
+            totalXP = (int)(totalXP * (1 + (0.1 * XPBoostLevel)));
         }
 
         // Gold calculation
@@ -747,17 +761,17 @@ public class Events implements Listener {
         if (hasLoreContaining(p.getInventory().getHelmet(), "spikey i".toLowerCase())) damage = 0.125;
         if (hasLoreContaining(p.getInventory().getHelmet(), "spikey ii".toLowerCase())) damage = 0.25;
         if (hasLoreContaining(p.getInventory().getHelmet(), "spikey iii".toLowerCase())) damage = 0.5;
-        p.playSound(p.getLocation(), Sound.VILLAGER_HIT, 0.35f, 2.0f);
+        if (damage !=0.0) p.playSound(p.getLocation(), Sound.VILLAGER_HIT, 0.35f, 2.0f);
 
         return damage ;
     }
 
     public Double getSharpDamage(Player p) {
-        double damage = 1.0;
+        double damage = 0.0;
 
-        if (hasLoreContaining(p.getItemInHand(), "sharp i".toLowerCase())) damage = 1.04;
-        if (hasLoreContaining(p.getItemInHand(), "sharp ii".toLowerCase())) damage = 1.07;
-        if (hasLoreContaining(p.getItemInHand(), "sharp iii".toLowerCase())) damage = 1.12;
+        if (hasLoreContaining(p.getItemInHand(), "sharp i".toLowerCase())) damage = 0.04;
+        if (hasLoreContaining(p.getItemInHand(), "sharp ii".toLowerCase())) damage = 0.07;
+        if (hasLoreContaining(p.getItemInHand(), "sharp iii".toLowerCase())) damage = 0.12;
 
         return damage;
     }
@@ -890,9 +904,44 @@ public class Events implements Listener {
     }
 
     @EventHandler
-    public void onPlayerUseItem(PlayerItemDamageEvent e) {
-        e.setCancelled(true);
+    public void onJoin(PlayerJoinEvent event) {
+        event.getPlayer().setHealth(20.0);
     }
+
+    @EventHandler
+    public void onChat(AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+        Stats playerstats = Main.getInstance().getStats(player.getUniqueId());
+
+        Rank rank = RankManager.getRank(player);
+
+        String prefix = ChatColor.translateAlternateColorCodes('&', rank.prefix);
+        String color = ChatColor.translateAlternateColorCodes('&', rank.color);
+
+        String displayLevel;
+
+        if (playerstats.getPrestige() > 0) {
+            displayLevel =
+                    playerstats.getBracketColor(playerstats.getPrestige()) +
+                            "[" + ChatColor.YELLOW +
+                            playerstats.getPrestigeRomanNumeral(playerstats.getPrestige()) +
+                            ChatColor.YELLOW + "-" +
+                            playerstats.getDisplayLevelNoBrackets(playerstats.getLevel()) +
+                            playerstats.getBracketColor(playerstats.getPrestige()) +
+                            "] ";
+        } else {
+            displayLevel =
+                    ChatColor.GRAY + "[" +
+                            playerstats.getDisplayLevelNoBrackets(playerstats.getLevel()) +
+                            ChatColor.GRAY + "] ";
+        }
+
+        // IMPORTANT: must contain two %s placeholders
+        String format = displayLevel + prefix + color + "%s" + ChatColor.WHITE + ": %s";
+
+        event.setFormat(format);
+    }
+
 
 }
 

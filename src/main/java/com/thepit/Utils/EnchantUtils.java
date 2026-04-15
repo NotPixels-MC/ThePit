@@ -137,12 +137,13 @@ public class EnchantUtils {
             }
 
             // Check if item is "Kept on death"
-            if (shouldKeepItem(item)) continue;
+            if (isKeptOnDeath(item)) continue;
 
             // Otherwise delete it
             inv.setItem(i, null);
         }
     }
+
 
 
     public static boolean shouldKeepItem(ItemStack item) {
@@ -157,6 +158,21 @@ public class EnchantUtils {
 
         return false;
     }
+
+    public static boolean isKeptOnDeath(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return false;
+
+        ItemMeta meta = item.getItemMeta();
+        if (!meta.hasLore()) return false;
+
+        for (String line : meta.getLore()) {
+            if (ChatColor.stripColor(line).equalsIgnoreCase("Kept on death")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     public static int[] getLives(ItemStack item) {
         if (!item.hasItemMeta() || !item.getItemMeta().hasLore()) return null;
